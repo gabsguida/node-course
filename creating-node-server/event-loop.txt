@@ -1,0 +1,5 @@
+Basicamente, quando um arquivo node é rodado, como por exemplo você dá o seguinte comando "node app.js", o script é iniciado
+e node começa a verificar o código, registrar as funções e variáveis. Porém, se o servidor estiver escutando por requisições (usando o listen),
+então o node entra em looping. Ou seja, se mantém rodando enquanto há event listeners registrados (que é o exemplo da função listen).
+E é isso que queremos, um server que fica escutando por requests, e que só para de escutar se houver um process.exit.
+Porém, você pode encerrar esse processo com "process.exit".

@@ -1,0 +1,8 @@
+-> MVC É um design pattern para projetos. 
+
+-> Controller controla as requisições do usuário e então gera uma resposta apropriada
+em que será apresentado no viewer. Tipicamente, o usuário interage com o View, que então gera uma
+request apropriada, que então será lidada por um controller. 
+    - Model é a parte do dado
+    - View é a interface do usuário
+    - Controller é onde os dados (request-response) são manipulados.

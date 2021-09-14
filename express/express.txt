@@ -1,0 +1,29 @@
+Express no fim das contas tem tudo a ver com middleware!
+
+ 
+-> A função use() nos permite adicionar um middleware. Além disso, uma forma comum de usar essa função é passar uma função 
+que então será chamada a cada nova requisição. Exemplo:
+
+app.use((req, res, next) => {
+    console.log('In the middleware');
+    next(); // permite que o próximo middleware seja executado (sempre in line). Se não mandarmos uma responta (res), devemos então chamar a função next()
+}) 
+
+-> O path da função use() é referente ao primeiro path que será matcheado. Então se você quer que um middleware rode antes da rota
+'/', então chame esse middleware antes como no exemplo a seguir:
+
+app.use('/product', (req, res, next) => {
+    console.log('In middleware')
+    res.send('<h1>The "Product" page</h1>')
+})
+
+app.use('/', (req, res, next) => {
+    console.log('In another middleware')
+    res.send('<h1>Hello  from express</h1>')
+})
+
+
+-> Para receber o res.body, é preciso passar um parser para receber o dado corretamente. Normalmente, usa-se o body-parser, mas ele está deprecated,
+então dá pra usar o próprio express
+
+
