@@ -1,155 +1,83 @@
-const getDb = require("../util/database").getDb;
-const { ObjectId } = require("mongodb");
+const mongoose = require("mongoose");
+const Schema = mongoose.Schema;
 
-class User {
-  constructor(username, email, cart, userId) {
-    this.username = username;
-    this.email = email;
-    this.cart = cart;
-    this.userId = ObjectId(userId);
-  }
+const userSchema = new Schema({
+  name: {
+    type: String,
+    required: true,
+  },
+  email: {
+    type: String,
+    required: true,
+  },
+  cart: {
+    items: [
+      {
+        productId: {
+          type: Schema.Types.ObjectId,
+          required: true,
+          ref: "Product",
+        },
+        quantity: { type: Number, required: true },
+      },
+    ],
+  },
+});
 
-  save() {
-    const db = getDb();
+userSchema.methods.addToCart = function (product) {
+  let newQuantity = 1;
+  let updatedCart;
 
-    return db
-      .collection("users")
-      .insertOne(this)
-      .then((result) => console.log(result))
-      .catch((error) => console.log(error));
-  }
-
-  addToCart(product) {
-    let newQuantity = 1;
-    let updatedCart;
-    const db = getDb();
-
-    // carrinho existe
-    if (this.cart != null && this.cart.items != null) {
-      const cartItemsCopy = [...this.cart.items];
-
-      const cartProductIndex = this.cart.items.findIndex(
-        (cp) => cp.productId.toString() === product._id.toString()
-      );
-
-      // produto já existe, então precisa atualizar a quantidade
-      if (cartProductIndex > -1) {
-        newQuantity = this.cart.items[cartProductIndex].quantity + 1;
-        cartItemsCopy[cartProductIndex].quantity = newQuantity;
-      } else {
-        // se não existe, então adiciona-o dentro da lista completa
-        cartItemsCopy.push({
-          productId: ObjectId(product._id),
-          quantity: 1,
-        });
-      }
-
-      updatedCart = {
-        items: cartItemsCopy,
-      };
-    } else {
-      // carrinho não existe ainda, então precisa cria-lo
-      updatedCart = {
-        items: [{ productId: ObjectId(product._id), quantity: 1 }],
-      };
-    }
-
-    return db
-      .collection("users")
-      .updateOne({ _id: this.userId }, { $set: { cart: updatedCart } })
-      .then((updatedUser) => {
-        //console.log(updatedUser);
-      })
-      .catch((error) => {
-        throw new Error("Houve um problema");
-      });
-  }
-
-  getCart() {
-    const db = getDb();
-
-    const items = this.cart.items != null ? this.cart.items : [];
-
-    // uso do $in do mongo para pegar os produtos que dão match com a lista de ids dos produtos que estão no carrinho
-    return db
-      .collection("products")
-      .find({
-        _id: { $in: items.map((item) => ObjectId(item.productId)) },
-      })
-      .toArray()
-      .then((products) => {
-        return products.map((product) => {
-          return {
-            ...product,
-            quantity: this.cart.items.find(
-              (item) => item.productId.toString() === product._id.toString()
-            ).quantity,
-          };
-        });
-      })
-      .catch((err) => console.log(err));
-  }
-
-  deleteProductCart(productId) {
-    const db = getDb();
-
+  // carrinho existe
+  if (this.cart != null && this.cart.items != null) {
     const cartItemsCopy = [...this.cart.items];
 
-    const index = this.cart.items.findIndex(
-      (item) => item.productId.toString() === productId.toString()
+    const cartProductIndex = this.cart.items.findIndex(
+      (cp) => cp.productId.toString() === product._id.toString()
     );
 
-    cartItemsCopy.splice(index, 1);
-
-    return db
-      .collection("users")
-      .updateOne(
-        { _id: this.userId },
-        { $set: { cart: { items: cartItemsCopy } } }
-      )
-      .then((result) => {})
-      .catch((err) => console.log(error));
-  }
-
-  addOrder() {
-    const db = getDb();
-
-    return this.getCart()
-      .then((products) => {
-        const order = {
-          items: products,
-          user: { _id: this.userId, name: this.username },
-        };
-
-        return db.collection("orders").insertOne(order);
-      })
-      .then((result) => {
-        this.cart = { items: [] };
-
-        return db
-          .collection("users")
-          .updateOne({ _id: this.userId }, { $set: { cart: { items: [] } } });
+    // produto já existe, então precisa atualizar a quantidade
+    if (cartProductIndex > -1) {
+      newQuantity = this.cart.items[cartProductIndex].quantity + 1;
+      cartItemsCopy[cartProductIndex].quantity = newQuantity;
+    } else {
+      // se não existe, então adiciona-o dentro da lista completa
+      cartItemsCopy.push({
+        productId: product._id,
+        quantity: 1,
       });
+    }
+
+    updatedCart = {
+      items: cartItemsCopy,
+    };
+  } else {
+    // carrinho não existe ainda, então precisa cria-lo
+    updatedCart = {
+      items: [{ productId: product._id, quantity: 1 }],
+    };
   }
 
-  getOrders() {
-    const db = getDb();
+  this.cart = updatedCart;
+  return this.save();
+};
 
-    return db.collection("orders").find({ "user._id": this.userId }).toArray();
-  }
+userSchema.methods.deleteProductCart = function (productId) {
+  const cartItemsCopy = [...this.cart.items];
 
-  static getUser(id) {
-    const db = getDb();
+  const index = this.cart.items.findIndex(
+    (item) => item.productId.toString() === productId.toString()
+  );
 
-    return db
-      .collection("users")
-      .findOne({ _id: ObjectId(id) })
-      .then((user) => {
-        //console.log(user, "user");
-        return user;
-      })
-      .catch((err) => console.log(err));
-  }
-}
+  cartItemsCopy.splice(index, 1);
 
-module.exports = User;
+  this.cart.items = cartItemsCopy;
+  return this.save();
+};
+
+userSchema.methods.clearCart = function () {
+  this.cart.items = [];
+  return this.save();
+};
+
+module.exports = mongoose.model("User", userSchema);
